@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Study Planner - Fixed</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f0f2f5;
+      transition: background 0.3s, color 0.3s;
+    }
+    .dark-mode { background: #1c1c1c; color: #eee; }
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0px 5px 20px rgba(0,0,0,0.2);
+      transition: background 0.3s;
+    }
+    .dark-mode .container { background: #2a2a2a; }
+    h2 { text-align: center; color: #333; }
+    .dark-mode h2 { color: #eee; }
+    .inputs {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      margin-bottom: 15px; justify-content: center;
+    }
+    input, select, button {
+      padding: 10px; border-radius: 8px; border: 1px solid #ccc;
+    }
+    button {
+      cursor: pointer; background: #4a90e2; color: white; border: none;
+    }
+    button:hover { background: #357ab8; }
+    .task-list { list-style: none; padding: 0; }
+    li {
+      background: #f4f4f4; margin: 10px 0; padding: 12px;
+      border-radius: 8px; display: flex; justify-content: space-between;
+      align-items: center; flex-wrap: wrap;
+    }
+    .dark-mode li { background: #3b3b3b; }
+    .completed { text-decoration: line-through; color: gray; }
+    .priority-high { color: red; font-weight: bold; }
+    .priority-medium { color: orange; }
+    .priority-low { color: green; }
+    .progress {
+      height: 20px; background: #ddd; border-radius: 10px;
+      margin-top: 20px; overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%; background: #4caf50;
+      width: 0%; transition: width 0.5s ease-in-out;
+    }
+    .controls {
+      margin: 15px 0; display: flex; justify-content: space-between;
+      flex-wrap: wrap; gap: 10px;
+    }
+    #searchInput { flex: 1; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2> Smart Study Planner</h2>
+    
+    <div class="inputs">
+      <input type="text" id="taskInput" placeholder="Enter study task...">
+      <input type="date" id="deadlineInput">
+      <select id="subjectInput">
+        <option value="General">General</option>
+        <option value="Math">Math</option>
+        <option value="CS">CS</option>
+        <option value="English">English</option>
+      </select>
+      <select id="priorityInput">
+        <option value="Low">Low Priority</option>
+        <option value="Medium">Medium Priority</option>
+        <option value="High">High Priority</option>
+      </select>
+      <button onclick="addTask()">➕ Add Task</button>
+      <button onclick="toggleDarkMode()">🌙/☀️</button>
+    </div>
+
+    <div class="controls">
+      <input type="text" id="searchInput" placeholder="🔍 Search task..." onkeyup="searchTask()">
+      <select id="filterInput" onchange="filterTasks()">
+        <option value="all">All</option>
+        <option value="completed">Completed</option>
+        <option value="pending">Pending</option>
+        <option value="Math">Math</option>
+        <option value="CS">CS</option>
+        <option value="English">English</option>
+      </select>
+    </div>
+
+    <ul class="task-list" id="taskList"></ul>
+
+    <div class="progress">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <p id="progressText">0% Completed</p>
+  </div>
+
+  <script>
+    let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+    function renderTasks(filteredTasks = tasks) {
+      const taskList = document.getElementById("taskList");
+      taskList.innerHTML = "";
+
+      filteredTasks.forEach((task, index) => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span class="${task.completed ? 'completed' : ''}">
+            <b>${task.title}</b> | 📅 ${task.deadline} | 📘 ${task.subject} 
+            <span class="priority-${task.priority.toLowerCase()}">(${task.priority})</span>
+          </span>
+          <div>
+            <button onclick="toggleComplete(${index})">✔</button>
+            <button onclick="deleteTask(${index})">❌</button>
+          </div>
+        `;
+        taskList.appendChild(li);
+      });
+
+      updateProgress();
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+    }
+
+    function addTask() {
+      const taskInput = document.getElementById("taskInput");
+      const deadlineInput = document.getElementById("deadlineInput");
+      const subjectInput = document.getElementById("subjectInput");
+      const priorityInput = document.getElementById("priorityInput");
+
+      if (taskInput.value === "" || deadlineInput.value === "") {
+        alert("Please enter task and deadline!");
+        return;
+      }
+      tasks.push({
+        title: taskInput.value,
+        deadline: deadlineInput.value,
+        subject: subjectInput.value,
+        priority: priorityInput.value,
+        completed: false
+      });
+      taskInput.value = "";
+      deadlineInput.value = "";
+      renderTasks();
+    }
+
+    function toggleComplete(index) {
+      tasks[index].completed = !tasks[index].completed;
+      renderTasks();
+    }
+
+    function deleteTask(index) {
+      tasks.splice(index, 1);
+      renderTasks();
+    }
+
+    function updateProgress() {
+      const total = tasks.length;
+      const completed = tasks.filter(t => t.completed).length;
+      const percentage = total ? Math.round((completed / total) * 100) : 0;
+
+      document.getElementById("progressBar").style.width = percentage + "%";
+      document.getElementById("progressText").innerText = `${percentage}% Completed`;
+    }
+
+    function searchTask() {
+      const query = document.getElementById("searchInput").value.toLowerCase();
+      const filtered = tasks.filter(t => t.title.toLowerCase().includes(query));
+      renderTasks(filtered);
+    }
+
+    function filterTasks() {
+      const filter = document.getElementById("filterInput").value;
+      if (filter === "all") renderTasks();
+      else if (filter === "completed") renderTasks(tasks.filter(t => t.completed));
+      else if (filter === "pending") renderTasks(tasks.filter(t => !t.completed));
+      else renderTasks(tasks.filter(t => t.subject === filter));
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark-mode");
+    }
+
+    renderTasks();
+  </script>
+
+</body>
+</html>
